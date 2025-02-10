@@ -14,6 +14,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     error Raffle__SendMoreToEnterRaffle();
     error Raffle__TransferFailed();
     error RaffleNotOpen();
+    error Raffle_upkeepNotNeeded(uint256 balance, uint256 playersLength, uint256 raffleState);
 
     /* type declarations */
     enum RaffleState {
@@ -69,14 +70,26 @@ contract Raffle is VRFConsumerBaseV2Plus {
         s_players.push(payable(msg.sender));
         emit RaffleEntered(msg.sender);
     }
-    function pickWinner() external {
-        if((block.timestamp - s_lastTimeStamp) > i_interval) {
-            revert();
+
+    function checkUpKeep(bytes memory /* checkData*/) public view returns (bool upkeepNeeded, bytes memory /* performData */) {
+        bool timeHasPassed = ((block.timestamp - s_lastTimeStamp) >= i_interval);
+        bool isOpen = s_raffleState == RaffleState.OPEN;
+        bool hasBalance = address(this).balance > 0;
+        bool hasPlayers = s_players.length > 0;
+        upkeepNeeded = timeHasPassed && isOpen && hasBalance && hasPlayers;
+        return (upkeepNeeded, hex"");
+    }
+
+    function performUpkeep(bytes calldata /* performData */) external {
+        (bool upkeepNeeded,) = checkUpKeep("");
+        if(!upkeepNeeded) {
+            revert Raffle_upkeepNotNeeded(address(this).balance, s_players.length, uint256(s_raffleState));
         }
         s_raffleState = RaffleState.CALCULATING;
-        // subscription 
+        // subscription 10154160353244790444373568111387600442262141096541236854108976934512836517657
         // request random number
-        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+        // uint256 requestId = s_vrfCoordinator.requestRandomWords(
+        s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: i_keyHash, 
                 subId: i_subscriptionId,
@@ -90,7 +103,29 @@ contract Raffle is VRFConsumerBaseV2Plus {
         );
     }
 
-    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal virtual override {
+//// REPLACED WITH ABOVE FUNCTION 
+    // function pickWinner() external {
+    //     if((block.timestamp - s_lastTimeStamp) > i_interval) {
+    //         revert();
+    //     }
+    //     s_raffleState = RaffleState.CALCULATING;
+    //     // subscription 10154160353244790444373568111387600442262141096541236854108976934512836517657
+    //     // request random number
+    //     uint256 requestId = s_vrfCoordinator.requestRandomWords(
+    //         VRFV2PlusClient.RandomWordsRequest({
+    //             keyHash: i_keyHash, 
+    //             subId: i_subscriptionId,
+    //             requestConfirmations: REQUEST_CONFIRMATION,
+    //             callbackGasLimit: i_gasLimit,
+    //             numWords: NUM_WORDS,
+    //             extraArgs: VRFV2PlusClient._argsToBytes(
+    //                 VRFV2PlusClient.ExtraArgsV1({ nativePayment:false })
+    //             )
+    //         })
+    //     );
+    // }
+
+    function fulfillRandomWords(uint256 /*requestId*/, uint256[] calldata randomWords) internal virtual override {
         uint256 indexOfWinner = randomWords[0] % s_players.length;
         address payable recentWinner = s_players[indexOfWinner];
         s_recentWinner = recentWinner;
