@@ -86,7 +86,6 @@ contract Raffle is VRFConsumerBaseV2Plus {
             revert Raffle_upkeepNotNeeded(address(this).balance, s_players.length, uint256(s_raffleState));
         }
         s_raffleState = RaffleState.CALCULATING;
-        // subscription 10154160353244790444373568111387600442262141096541236854108976934512836517657
         // request random number
         // uint256 requestId = s_vrfCoordinator.requestRandomWords(
         s_vrfCoordinator.requestRandomWords(
