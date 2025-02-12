@@ -42,6 +42,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     // 4. You can "listen" this events from frontend  
     event RaffleEntered(address indexed player);
     event WinnerPicked(address indexed winner);
+    event RequestedRaffleWinner(uint256 indexed requestId);
 
     constructor(
         uint256 entranceFee, 
@@ -87,8 +88,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
         }
         s_raffleState = RaffleState.CALCULATING;
         // request random number
-        // uint256 requestId = s_vrfCoordinator.requestRandomWords(
-        s_vrfCoordinator.requestRandomWords(
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: i_keyHash, 
                 subId: i_subscriptionId,
@@ -100,6 +100,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
                 )
             })
         );
+        emit RequestedRaffleWinner(requestId);
     }
 
 //// REPLACED WITH ABOVE FUNCTION 
